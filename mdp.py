@@ -42,7 +42,6 @@ class MDP:
         pass
 
 
-
 # now, implement the gridworld problem MDP
 class GridWorld(MDP):
 
@@ -94,18 +93,6 @@ class GridWorld(MDP):
 
         # specify action cost 
         self.action_cost = 0.0
-
-        if withQTable:
-            # initialize Q-function and value function 
-            self.Q = {}
-            self.V = {}
-            self.Vtemp = {}
-            for state in (self.states):
-                self.V[state] = 0.0
-                self.Vtemp[state] = 0.0
-                actions = self.get_actions(state)
-                for action in actions:
-                    self.Q[(state, action)] = 0.0     
 
 
     def get_states(self):
@@ -184,6 +171,15 @@ class GridWorld(MDP):
         else:
             reward = self.action_cost
 
+        '''
+        if next_state in self.terminal_states:
+            reward = self.rewards[next_state]
+        elif next_state == self.exit:
+            reward = 0.0                
+        else:
+            reward = self.action_cost
+        '''
+
         return reward    
 
 
@@ -218,36 +214,6 @@ class GridWorld(MDP):
             return (next_state, probability)
         else:
             return (state, probability)
-
-
-    def update_Q(self, state, action, Qnew):
-        self.Q[(state, action)] = Qnew
-    
-    
-    def update_V(self):
-        # copy from Vtemp
-        for state in self.states:
-            self.V[state] = self.Vtemp[state]
-
-
-    def update_V_from_Q(self):
-        for state in self.states:
-            actions = self.get_actions(state)
-            self.V[state] =  max([self.Q[(state, action)] for action in actions])
-
-
-    def extract_policy(self):
-        # extract a policy using the Q function
-        policy = {}
-        for state in self.states:
-            actions = self.get_actions(state)
-            Qs = {}
-            for action in actions:
-                Qs[action] = self.Q[(state, action)]    
-
-            policy[state] = self.action_names[max(Qs, key=lambda k:Qs[k])]
-            
-        return policy
 
 
 class CliffWorld(MDP):
@@ -303,18 +269,6 @@ class CliffWorld(MDP):
 
         # empty list for storing the discounted reward at each step opf the episode
         self.episode_discounted_rewards = []
-
-        if withQTable:
-            # initialize Q-function and value function
-            self.Q = {}
-            self.V = {}
-            self.Vtemp = {}
-            for state in (self.states):
-                self.V[state] = 0.0
-                self.Vtemp[state] = 0.0
-                actions = self.get_actions(state)
-                for action in actions:
-                    self.Q[(state, action)] = 0.0     
 
 
     def get_states(self):
@@ -434,39 +388,97 @@ class CliffWorld(MDP):
             return (state, probability)
 
 
-    def update_Q(self, state, action, Qnew):
-        self.Q[(state, action)] = Qnew
+# a Q-function interface
+class QFunction:
+    @abstractmethod
+    def update(self, state, action, delta):
+        pass
     
-    
-    def update_V(self):
-        # copy from Vtemp
-        for state in self.states:
-            self.V[state] = self.Vtemp[state]
+    @abstractmethod
+    def evaluate(self, state, action):
+        pass
+
+    # returns argmax action and Q-value for given state
+    def get_maxQ(self, state, actions):
+        argmax_q = None
+        max_q = float("-inf")
+        for action in actions:
+            value = self.evaluate(state, action)
+            if max_q < value:
+                max_q = value
+                argmax_q = action
+
+        return (argmax_q, max_q)
 
 
-    def update_V_from_Q(self):
-        for state in self.states:
-            actions = self.get_actions(state)
-            self.V[state] =  max([self.Q[(state, action)] for action in actions])
-
-
-    def extract_policy(self):
-        # extract a policy using the Q function
+    # extract a policy using the Q function
+    def extract_policy(self, mdp):
         policy = {}
-        for state in self.states:
-            actions = self.get_actions(state)
+        for state in mdp.states:
+            actions = mdp.get_actions(state)
             Qs = {}
             for action in actions:
-                Qs[action] = self.Q[(state, action)]    
+                Qs[action] = self.evaluate(state, action)    
 
-            policy[state] = self.action_names[max(Qs, key=lambda k:Qs[k])]
+            policy[state] = mdp.action_names[max(Qs, key=lambda x:Qs[x])]
             
         return policy
 
 
+# a Q-table base class that derives from Q function interface
+class QTable(QFunction):
+    def __init__(self, mdp, default=0.0):
+        self.mdp = mdp
+        # initialize Q-function and value function 
+        self.Q = {}
+        self.V = {}
+        self.Vtemp = {}
+        for state in (self.mdp.states):
+            self.V[state] = default
+            self.Vtemp[state] = default
+            actions = self.mdp.get_actions()
+            for action in actions:
+                self.Q[(state, action)] = default
+
+
+    def update(self, state, action, delta):
+        self.Q[(state, action)] = delta
+    
+
+    def update_V(self, state, delta):
+        self.V[state] = delta
+
+    def update_Vtemp(self, state, delta):
+        self.Vtemp[state] = delta
+
+
+    def evaluate(self, state, action):
+        return self.Q[(state, action)]
+
+    
+    def evaluate_V(self, state):
+        return self.V[state]
+
+
+    def evaluate_Vtemp(self, state):
+        return self.Vte[state]
+    
+
+    def update_V_from_Vtemp(self):
+        # copy from Vtemp
+        for state in self.mdp.states:
+            self.V[state] = self.Vtemp[state]
+
+
+    def update_V_from_Q(self):
+        for state in self.mdp.states:
+            actions = self.mdp.get_actions(state)
+            self.V[state] =  max([self.Q[(state, action)] for action in actions])
+
+  
 
 # value iteration loop
-def value_iteration(grid_world_mdp, num_iters, theta=0.001):
+def value_iteration(grid_world_mdp, qtable, num_iters, theta=0.001):
     states = grid_world_mdp.get_states()    
     for i in range(num_iters):
         print(f"Iteration# {i}")
@@ -479,22 +491,22 @@ def value_iteration(grid_world_mdp, num_iters, theta=0.001):
                 # compute Q value
                 Qnew = 0.0
                 for (next_state, p) in grid_world_mdp.get_transitions(state, action):
-                    Qnew += p * (grid_world_mdp.get_rewards(state, action, next_state) + grid_world_mdp.gamma * grid_world_mdp.V[next_state])
-                grid_world_mdp.update_Q(state, action, Qnew)
+                    Qnew += p * (grid_world_mdp.get_rewards(state, action, next_state) + grid_world_mdp.gamma * qtable.evaluate_V(next_state))
+                qtable.update(state, action, Qnew)
                 Qsa.append(Qnew)
             Vnew = max(Qsa)    
-            grid_world_mdp.Vtemp[state] = Vnew  
+            qtable.update_Vtemp(state, Vnew)  
             # update delta        
-            d = max(d, abs(Vnew - grid_world_mdp.V[state]))
+            d = max(d, abs(Vnew - qtable.evaluate_V(state)))
         
         # update the value function
-        grid_world_mdp.update_V()
+        qtable.update_V_from_Vtemp()
 
         print("-----------------------")
         for y in range(grid_world_mdp.height-1, -1, -1):
             for x in range(grid_world_mdp.width):
-                if (x,y) in grid_world_mdp.V:
-                    print(f"{grid_world_mdp.V[(x,y)]: 0.2f}", end=' ')
+                if (x,y) in qtable.V:
+                    print(f"{qtable.evaluate_V((x,y)): 0.2f}", end=' ')
                 else:
                     print(f"{0.0: 0.2f}", end=' ')
             print("")       
@@ -507,8 +519,9 @@ def value_iteration(grid_world_mdp, num_iters, theta=0.001):
 
 # Q-learner class
 class QLearner:
-    def __init__(self, mdp, alpha=0.1, epsilon=0.1) :
+    def __init__(self, mdp, qfunction, alpha=0.1, epsilon=0.1) :
         self.mdp = mdp
+        self.qfunction = qfunction
         self.alpha = alpha
         self.epsilon = epsilon
         np.random.seed(2)
@@ -534,25 +547,24 @@ class QLearner:
         
         # exploitation
         else:
-            # get Q values
-            Qsa = {action:self.mdp.Q[(state, action)] for action in actions}
             # argmax to find best action
-            action = max(Qsa, key=Qsa.get)        
+            action, _ = self.qfunction.get_maxQ(state, actions)        
         return action
 
 
     # Q-learning update
     def get_delta_Q(self, reward, Qold, state, next_state, next_action):
         # get estimated value for next state
-        aprime = self.mdp.get_actions(next_state)
-        Vsprime = max([self.mdp.Q[(next_state, action)] for action in aprime])
+        actions = self.mdp.get_actions(next_state)
+        _, Vsprime = self.qfunction.get_maxQ(next_state, actions) 
         delta = reward + self.mdp.gamma * Vsprime - Qold
         return self.alpha * delta  
+
 
     # SARSA update
     def get_delta_SARSA(self, reward, Qold, state, next_state, next_action):
         # get estimated value for next state
-        Vsprime = self.mdp.Q[(next_state, next_action)] 
+        Vsprime = self.qfunction.evaluate(next_state, next_action) 
         delta = reward + self.mdp.gamma * Vsprime - Qold
         return self.alpha * delta  
 
@@ -572,12 +584,12 @@ class QLearner:
                 (next_state, reward) = self.mdp.execute(state, action)
                 next_action = self.bandit(next_state)
                 # update q value
-                Qold = self.mdp.Q[(state, action)]
+                Qold = self.qfunction.evaluate(state, action)
                 if not SARSA:
                     Qnew = Qold + self.get_delta_Q(reward, Qold, state, next_state, next_action)
                 else:
                     Qnew = Qold + self.get_delta_SARSA(reward, Qold, state, next_state, next_action)
-                self.mdp.Q[(state,action)] = Qnew
+                self.qfunction.update(state,action,Qnew)
                 state = next_state
                 action = next_action
                 
@@ -590,13 +602,13 @@ class QLearner:
             print(f"Episode# {i}, length: {episode_len}, accumulated reward: {accumulated_discounted_reward}")
    
             # update the value function
-            self.mdp.update_V_from_Q()
+            self.qfunction.update_V_from_Q()
 
             print("-----------------------")
             for y in range(self.mdp.height-1, -1, -1):
                 for x in range(self.mdp.width):
-                    if (x,y) in self.mdp.V:
-                        print(f"{self.mdp.V[(x,y)]: 0.2f}", end=' ')
+                    if (x,y) in self.qfunction.V:
+                        print(f"{self.qfunction.evaluate_V((x,y)): 0.2f}", end=' ')
                     else:
                         print(f"{0.0: 0.2f}", end=' ')
                 print("")       
