@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 
 # first, define an interface for an MDP
@@ -45,7 +46,7 @@ class MDP:
 # now, implement the gridworld problem MDP
 class GridWorld(MDP):
 
-    def __init__(self, discount_factor=0.9, noise=0.1, withQTable=True) :
+    def __init__(self, discount_factor=0.9, noise=0.1) :
 
         # initialise the set of all possible states, in this case tuples (x,y) of all grid cells, excluding walls
         # will use the example from lectures and tute week 7
@@ -548,7 +549,11 @@ class QLearner:
         # exploitation
         else:
             # argmax to find best action
-            action, _ = self.qfunction.get_maxQ(state, actions)        
+            action, _ = self.qfunction.get_maxQ(state, actions)   
+
+        if action == None:
+            raise Exception("Error! Bandit action is None!")    
+
         return action
 
 
@@ -615,3 +620,26 @@ class QLearner:
             print("-----------------------")
 
         return episode_rewards
+
+
+def moving_average(x, window_size):
+    smoothed_x = []
+    for i in range(len(x)):
+        lo = max(0, i-window_size+1)
+        windowed = x[lo:i+1]
+        avg = sum(windowed) / len(windowed)
+        smoothed_x.append(avg)
+    return smoothed_x
+
+def plot_rewards(rewards, smoothing=True, window_size=10):
+    fig = plt.figure(figsize=(5, 5))
+    if smoothing:
+        plt.plot(moving_average(rewards, window_size))
+    else:
+        plt.plot(rewards)
+    plt.xlabel("Episodes")
+    plt.ylabel("Accumulated Reward")
+    plt.minorticks_on()
+    plt.grid(which='major', linestyle='-', linewidth='0.5', color='black')
+    plt.grid(which='minor', linestyle=':', linewidth='0.5', color='gray')
+    plt.show()
