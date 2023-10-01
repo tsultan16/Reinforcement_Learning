@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 # first, define an interface for an MDP
-class MDP:
+class MDP(ABC):
     @abstractmethod
     def get_states(self):
         pass   
@@ -31,7 +31,7 @@ class MDP:
         pass
 
     @abstractmethod
-    def is_terminal(self, state):
+    def is_exit(self, state):
         pass
 
     @abstractmethod
@@ -390,7 +390,7 @@ class CliffWorld(MDP):
 
 
 # a Q-function interface
-class QFunction:
+class QFunction(ABC):
     @abstractmethod
     def update(self, state, action, delta):
         pass
