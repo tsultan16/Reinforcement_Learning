@@ -441,19 +441,19 @@ class QTable(QFunction):
                 self.Q[(state, action)] = default
 
 
-    def update(self, state, action, delta):
-        self.Q[(state, action)] = delta
+    def update(self, state, action, Qold, delta):
+        self.Q[(state, action)] = Qold + delta
     
+    
+    def evaluate(self, state, action):
+        return self.Q[(state, action)]
+
 
     def update_V(self, state, delta):
         self.V[state] = delta
 
     def update_Vtemp(self, state, delta):
         self.Vtemp[state] = delta
-
-
-    def evaluate(self, state, action):
-        return self.Q[(state, action)]
 
     
     def evaluate_V(self, state):
@@ -492,7 +492,7 @@ def value_iteration(grid_world_mdp, qtable, num_iters, theta=0.001):
                 Qnew = 0.0
                 for (next_state, p) in grid_world_mdp.get_transitions(state, action):
                     Qnew += p * (grid_world_mdp.get_rewards(state, action, next_state) + grid_world_mdp.gamma * qtable.evaluate_V(next_state))
-                qtable.update(state, action, Qnew)
+                qtable.update(state, action, 0.0, Qnew)
                 Qsa.append(Qnew)
             Vnew = max(Qsa)    
             qtable.update_Vtemp(state, Vnew)  
@@ -586,10 +586,10 @@ class QLearner:
                 # update q value
                 Qold = self.qfunction.evaluate(state, action)
                 if not SARSA:
-                    Qnew = Qold + self.get_delta_Q(reward, Qold, state, next_state, next_action)
+                    delta = self.get_delta_Q(reward, Qold, state, next_state, next_action)
                 else:
-                    Qnew = Qold + self.get_delta_SARSA(reward, Qold, state, next_state, next_action)
-                self.qfunction.update(state,action,Qnew)
+                    delta = self.get_delta_SARSA(reward, Qold, state, next_state, next_action)
+                self.qfunction.update(state,action,Qold,delta)
                 state = next_state
                 action = next_action
                 
