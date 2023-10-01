@@ -46,7 +46,7 @@ class MDP:
 # now, implement the gridworld problem MDP
 class GridWorld(MDP):
 
-    def __init__(self, discount_factor=0.9, noise=0.1) :
+    def __init__(self, discount_factor=0.9, noise=0.1, withQTable=True) :
 
         # initialise the set of all possible states, in this case tuples (x,y) of all grid cells, excluding walls
         # will use the example from lectures and tute week 7
@@ -58,6 +58,9 @@ class GridWorld(MDP):
  
         # specify terminal states
         self.terminal_states=[(3,1),(3,2)] 
+
+        # specify goal
+        self.goal = (3,2)
 
         # create a dummy terminal state which is the successor to all terminal states
         self.exit = (-1,-1)
@@ -92,16 +95,17 @@ class GridWorld(MDP):
         # specify action cost 
         self.action_cost = 0.0
 
-        # initialize Q-function and value function
-        self.Q = {}
-        self.V = {}
-        self.Vtemp = {}
-        for state in (self.states):
-            self.V[state] = 0.0
-            self.Vtemp[state] = 0.0
-            actions = self.get_actions(state)
-            for action in actions:
-                self.Q[(state, action)] = 0.0     
+        if withQTable:
+            # initialize Q-function and value function 
+            self.Q = {}
+            self.V = {}
+            self.Vtemp = {}
+            for state in (self.states):
+                self.V[state] = 0.0
+                self.Vtemp[state] = 0.0
+                actions = self.get_actions(state)
+                for action in actions:
+                    self.Q[(state, action)] = 0.0     
 
 
     def get_states(self):
@@ -116,7 +120,7 @@ class GridWorld(MDP):
         return self.terminal_states
 
 
-    def get_actions(self, state):
+    def get_actions(self, state=None):
 
         actions = [self.terminate, self.up, self.down, self.left, self.right]
         if state is None:
@@ -248,7 +252,7 @@ class GridWorld(MDP):
 
 class CliffWorld(MDP):
 
-    def __init__(self, discount_factor=0.9, noise=0.01) :
+    def __init__(self, discount_factor=0.9, noise=0.01, withQTable=True) :
 
         # initialise the set of all possible states, in this case tuples (x,y) of all grid cells, excluding walls
         # will use the example from lectures and tute week 7
@@ -260,6 +264,9 @@ class CliffWorld(MDP):
  
         # specify terminal states
         self.terminal_states = [(1,0),(2,0),(3,0),(4,0),(5,0)] 
+
+        # specify goal
+        self.goal = (5,0)
 
         # create a dummy terminal state which is the successor to all terminal states
         self.exit = (-1,-1)
@@ -297,16 +304,17 @@ class CliffWorld(MDP):
         # empty list for storing the discounted reward at each step opf the episode
         self.episode_discounted_rewards = []
 
-        # initialize Q-function and value function
-        self.Q = {}
-        self.V = {}
-        self.Vtemp = {}
-        for state in (self.states):
-            self.V[state] = 0.0
-            self.Vtemp[state] = 0.0
-            actions = self.get_actions(state)
-            for action in actions:
-                self.Q[(state, action)] = 0.0     
+        if withQTable:
+            # initialize Q-function and value function
+            self.Q = {}
+            self.V = {}
+            self.Vtemp = {}
+            for state in (self.states):
+                self.V[state] = 0.0
+                self.Vtemp[state] = 0.0
+                actions = self.get_actions(state)
+                for action in actions:
+                    self.Q[(state, action)] = 0.0     
 
 
     def get_states(self):
@@ -321,7 +329,7 @@ class CliffWorld(MDP):
         return self.terminal_states
 
 
-    def get_actions(self, state):
+    def get_actions(self, state=None):
 
         actions = [self.terminate, self.up, self.down, self.left, self.right]
         if state is None:
