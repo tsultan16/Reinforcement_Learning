@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-import random
+import random, math
 import matplotlib.pyplot as plt
 
 
@@ -543,6 +543,67 @@ def value_iteration(grid_world_mdp, qtable, num_iters, theta=0.001):
         # stop value iteration if delta falls below threshold    
         if d < theta:
             break    
+
+
+# epsilon-greedy multi-arm bandit
+class EpsGreedyBandit:
+
+    def __init__(self, epsilon=0.1) -> None:
+        self.epsilon = epsilon
+
+
+    def select(self, state, actions, qfunction):    
+        randnum = np.random.random()
+        
+        # exploration
+        if randnum < self.epsilon:
+            action = random.choices(actions, k=1)[0]
+        
+        # exploitation
+        else:
+            # argmax to find best action
+            action, _ = qfunction.get_maxQ(state, actions)   
+
+        if action == None:
+            raise Exception("Error! Bandit action is None!")    
+
+        return action
+    
+
+# upper confidence bounds (UCB) bandit
+class UCBBandit:
+    def __init__(self):
+        self.total = 0
+        # dictionary for recording number of times each action has been chosen
+        self.times_selected = {}
+
+
+    def select(self, state, actions, qfunction):
+        
+        # first, make sure each action has been executed once
+        for action in actions:
+            if action not in self.times_selected.keys():
+                self.times_selected[action] = 1
+                self.total += 1
+                return action
+
+        max_actions = []
+        max_value = float("-inf")
+        for action in actions:
+            value = qfunction.evaluate(state, action) + math.sqrt(2.0*math.log(self.total)/self.times_selected[action])
+            if value > max_value:
+                max_value = value
+                max_actions = [action]
+            elif value == max_value:
+                max_actions.append(action)
+
+        # if multiple actions with max value, pick one randomly
+        selected_action = random.choice(max_actions)
+        self.times_selected[selected_action] = self.times_selected[selected_action] + 1
+        self.total += 1
+        
+        return selected_action          
+            
 
 # Q-learner class
 class QLearner:
