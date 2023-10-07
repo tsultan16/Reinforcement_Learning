@@ -477,6 +477,32 @@ class QTable(QFunction):
             self.V[state] =  max([self.Q[(state, action)] for action in actions])
 
   
+    def display(self):
+
+        # display values        
+        print("-----------------------")
+        for y in range(self.mdp.height-1, -1, -1):
+            for x in range(self.mdp.width):
+                if (x,y) in self.V:
+                    print(f"{self.evaluate_V((x,y)): 0.2f}", end=' ')
+                else:
+                    print(f"{0.0: 0.2f}", end=' ')
+            print("")       
+        print("-----------------------")
+
+        # policy extraction
+        pi = self.extract_policy(self.mdp)
+        print("-----------------------")
+        for y in range(self.mdp.height-1, -1, -1):
+            for x in range(self.mdp.width):
+                if (x,y) in pi:
+                    print(f"{pi[(x,y)]:<6}", end=' ')
+                else:
+                    print(f"{'None':<6}", end=' ')
+            print("")       
+        print("-----------------------")
+
+
 
 # value iteration loop
 def value_iteration(grid_world_mdp, qtable, num_iters, theta=0.001):
