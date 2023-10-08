@@ -263,7 +263,7 @@ class CliffWorld(MDP):
         self.gamma = discount_factor
 
         # specify rewards for transitioning into terminal states
-        self.rewards =  {(1,0) : -5.0, (2,0) : -5.0, (3,0) : -5.0, (4,0) : -5.0, (5,0) : 0.0}
+        self.rewards =  {(1,0) : -50.0, (2,0) : -50.0, (3,0) : -50.0, (4,0) : -50.0, (5,0) : 5.0}
 
         # specify action cost 
         self.action_cost = -0.05
@@ -430,16 +430,23 @@ class QFunction(ABC):
 class QTable(QFunction):
     def __init__(self, mdp, default=0.0):
         self.mdp = mdp
+        self.default = default
         # initialize Q-function and value function 
         self.Q = {}
         self.V = {}
         self.Vtemp = {}
+        
         for state in (self.mdp.states):
             self.V[state] = default
             self.Vtemp[state] = default
             actions = self.mdp.get_actions()
             for action in actions:
                 self.Q[(state, action)] = default
+
+    def reset(self):
+        self.Q = {key : 0 for key in self.Q}
+        self.V = {key : 0 for key in self.V}
+        self.Vtemp = {key : 0 for key in self.Vtemp}
 
 
     def update(self, state, action, Qold, delta):
@@ -501,6 +508,99 @@ class QTable(QFunction):
                     print(f"{'None':<6}", end=' ')
             print("")       
         print("-----------------------")
+
+
+class QTablePartial(QFunction):
+    def __init__(self, mdp, default=0.0):
+        self.mdp = mdp
+        self.default = default
+        # initialize Q-function and value function 
+        self.Q = {}
+        self.V = {}
+        self.Vtemp = {}
+        
+        '''
+        for state in (self.mdp.states):
+            self.V[state] = default
+            self.Vtemp[state] = default
+            actions = self.mdp.get_actions()
+            for action in actions:
+                self.Q[(state, action)] = default
+        '''
+
+    def reset(self):
+        self.Q = {key : 0 for key in self.Q}
+        self.V = {key : 0 for key in self.V}
+        self.Vtemp = {key : 0 for key in self.Vtemp}
+
+
+    def update(self, state, action, Qold, delta):
+        self.Q[(state, action)] = Qold + delta
+    
+    
+    def evaluate(self, state, action):
+        if (state, action) not in self.Q:
+            self.Q[(state, action)] = 0.0
+        return self.Q[(state, action)]
+
+
+    def update_V(self, state, delta):
+        self.V[state] = delta
+
+    def update_Vtemp(self, state, delta):
+        self.Vtemp[state] = delta
+
+    
+    def evaluate_V(self, state):
+        if state not in self.V:
+            self.V[state] = 0.0
+        return self.V[state]
+
+
+    def evaluate_Vtemp(self, state):
+        if state not in self.V_temp:
+            self.V_temp[state] = 0.0
+        return self.V_temp[state]
+    
+
+    def update_V_from_Vtemp(self):
+        # copy from Vtemp
+        for state in self.Vtemp:
+            self.V[state] = self.Vtemp[state]
+
+
+    def update_V_from_Q(self):
+        for (state, action) in self.Q:
+            if state in self.V:
+                self.V[state] = max(self.Q[(state, action)],self.V[state])
+            else:
+                self.V[state] = self.Q[(state, action)]    
+  
+    def display(self):
+
+        # display values        
+        print("-----------------------")
+        for y in range(self.mdp.height-1, -1, -1):
+            for x in range(self.mdp.width):
+                if (x,y) in self.V:
+                    print(f"{self.evaluate_V((x,y)): 0.2f}", end=' ')
+                else:
+                    print(f"{0.0: 0.2f}", end=' ')
+            print("")       
+        print("-----------------------")
+
+        # policy extraction
+        pi = self.extract_policy(self.mdp)
+        print("-----------------------")
+        for y in range(self.mdp.height-1, -1, -1):
+            for x in range(self.mdp.width):
+                if (x,y) in pi:
+                    print(f"{pi[(x,y)]:<6}", end=' ')
+                else:
+                    print(f"{'None':<6}", end=' ')
+            print("")       
+        print("-----------------------")
+
 
 
 
